@@ -1,0 +1,30 @@
+# Environment files and local credentials
+.env
+.env.*
+!.env.example
+
+# Local runtime output
+.run/
+*.log
+*.tmp
+
+# Build products and dependencies
+**/target/
+**/node_modules/
+**/dist/
+**/coverage/
+
+# Editor and operating system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local judge media and generated presentation files
+.deliverables/
+*.pptx
+*.webm
+frontend/record-demo.html
+
+# Stray nested checkout in the project folder
+/MandateShield/
