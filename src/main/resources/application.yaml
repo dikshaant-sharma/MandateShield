@@ -1,0 +1,70 @@
+spring:
+  config:
+    import: optional:file:.env[.properties]
+  ai:
+    model:
+      # Gemini is an optional enrichment tier; core features must start without its credentials.
+      chat: ${MANDATESHIELD_CHAT_MODEL:none}
+    google:
+      genai:
+        api-key: ${GOOGLE_GENAI_API_KEY:}
+        chat:
+          model: ${MANDATESHIELD_GEMINI_MODEL:gemini-3.8-flash}
+          temperature: 0.0
+          max-output-tokens: 32
+          thinking-level: LOW
+  application:
+    name: MandateShield
+
+  mongodb:
+    uri: ${MONGODB_URI}
+    database: ${MONGODB_DATABASE:MandateShield}
+    auto-index-creation: true
+
+  task:
+    execution:
+      pool:
+        core-size: 4
+        max-size: 8
+      thread-name-prefix: ms-async-
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+logging:
+  level:
+    com.mandateshield: INFO
+    org.springframework.data.mongodb: WARN
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+
+mandateshield:
+  pinecone:
+    api-key: ${PINECONE_API_KEY:}
+    index-name: ${PINECONE_INDEX_NAME:mandateshield-merchants}
+    index-host: ${PINECONE_INDEX_HOST:}
+  resolver:
+    llm:
+      confidence-threshold: 0.7
+  jwt:
+    # Never ship a reusable signing key. Configure a unique secret in the local .env.
+    secret: ${MANDATESHIELD_JWT_SECRET}
+    expiration-hours: 24
+  pipeline:
+    run-on-startup: false
+  demo:
+    seed-patterns: false

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MandateShield — Judge walkthrough recorder</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, Segoe UI, sans-serif; background:#0b1220; color:#e8edf7; }
+    body { margin:0; padding:40px; max-width:900px; }
+    h1 { margin:0 0 8px; font-size:28px; }
+    p { color:#a7b2c7; line-height:1.55; }
+    .panel { margin-top:24px; padding:24px; border:1px solid #26354d; border-radius:18px; background:#111c2e; }
+    .steps { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:18px 0; }
+    button { border:1px solid #354966; border-radius:10px; padding:12px 16px; background:#172840; color:#eaf2ff; font-size:14px; cursor:pointer; text-align:left; }
+    button:hover { background:#203a5d; }
+    button.primary { background:#2e6ce6; border-color:#2e6ce6; font-weight:700; }
+    button.stop { background:#923d4c; border-color:#923d4c; }
+    .actions { display:flex; gap:12px; margin-top:22px; }
+    #status { min-height:24px; margin-top:16px; color:#9cc6ff; }
+    #preview { display:none; width:320px; margin-top:18px; border-radius:8px; }
+    canvas, video { display:none; }
+  </style>
+</head>
+<body>
+  <h1>MandateShield judge walkthrough</h1>
+  <p>Records the MandateShield browser tab only. In the browser picker, choose the tab titled <b>MandateShield — Recurring Payment Intelligence</b>. The exported video includes step captions and uses synthetic demo data.</p>
+  <section class="panel">
+    <strong>Walkthrough captions</strong>
+    <div class="steps">
+      <button data-title="1 · Understand the recurring picture" data-subtitle="A clear view of recurring spend, estimated savings, and charges that need review.">1 · Overview</button>
+      <button data-title="2 · Load a safe, labeled demo" data-subtitle="The synthetic dataset demonstrates renewal, price change, trial conversion, variable billing, and resumed billing.">2 · Synthetic dataset</button>
+      <button data-title="3 · Review the evidence" data-subtitle="See transaction history, recurring groups, and the signals behind each review.">3 · Transactions & review</button>
+      <button data-title="4 · Resolve noisy descriptors" data-subtitle="Turn a bank-style descriptor into a merchant identity with confidence and resolution tier.">4 · Descriptor Studio</button>
+      <button data-title="5 · Take informed action" data-subtitle="Get payment-rail guidance, prepare a notice, and track cancellation confirmation.">5 · Cancellation Studio</button>
+      <button data-title="MandateShield" data-subtitle="Know what repeats. Understand what it costs. Take the next step with confidence.">6 · Closing</button>
+    </div>
+    <div class="actions">
+      <button id="start" class="primary">Start screen recording</button>
+      <button id="stop" class="stop" disabled>Stop and save video</button>
+    </div>
+    <div id="status" role="status">Ready. Start after the app is in the state you want to present.</div>
+  </section>
+  <video id="source" muted playsinline></video><canvas id="canvas" width="1280" height="720"></canvas>
+  <script>
+    const source = document.querySelector('#source');
+    const canvas = document.querySelector('#canvas');
+    const ctx = canvas.getContext('2d');
+    const status = document.querySelector('#status');
+    let displayStream, recorder, chunks = [], title = 'MandateShield — Recurring Payment Intelligence', subtitle = 'Find recurring charges, understand their cost, and take informed action.';
+    let drawing;
+    function draw() {
+      if (source.readyState >= 2) {
+        const scale = Math.min(canvas.width / source.videoWidth, canvas.height / source.videoHeight);
+        const w = source.videoWidth * scale, h = source.videoHeight * scale;
+        ctx.fillStyle = '#0b1220'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(source, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+        const grad = ctx.createLinearGradient(0, 540, 0, 720);
+        grad.addColorStop(0, 'rgba(8,15,28,0.72)'); grad.addColorStop(1, 'rgba(8,15,28,0.98)');
+        ctx.fillStyle = grad; ctx.fillRect(0, 535, canvas.width, 185);
+        ctx.fillStyle = '#62a1ff'; ctx.fillRect(54, 573, 5, 88);
+        ctx.fillStyle = '#a9caff'; ctx.font = '600 21px Segoe UI, sans-serif'; ctx.fillText('MANDATESHIELD  /  HACKATHON DEMO', 78, 593);
+        ctx.fillStyle = '#ffffff'; ctx.font = '700 32px Segoe UI, sans-serif'; ctx.fillText(title, 78, 634);
+        ctx.fillStyle = '#d0d9e8'; ctx.font = '400 18px Segoe UI, sans-serif';
+        const words = subtitle.split(' '); let line = '', y = 670;
+        for (const word of words) { const test = line ? `${line} ${word}` : word; if (ctx.measureText(test).width > 1080) { ctx.fillText(line, 78, y); line = word; y += 23; } else line = test; }
+        ctx.fillText(line, 78, y);
+      }
+      drawing = requestAnimationFrame(draw);
+    }
+    document.querySelectorAll('[data-title]').forEach(button => button.addEventListener('click', () => {
+      title = button.dataset.title; subtitle = button.dataset.subtitle;
+    }));
+    document.querySelector('#start').addEventListener('click', async () => {
+      try {
+        displayStream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 24 }, audio: false });
+        source.srcObject = displayStream; await source.play();
+        drawing = requestAnimationFrame(draw);
+        const stream = canvas.captureStream(24);
+        const mime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(type => MediaRecorder.isTypeSupported(type));
+        recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 2500000 });
+        chunks = []; recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+        recorder.onstop = async () => {
+          cancelAnimationFrame(drawing);
+          const blob = new Blob(chunks, { type: 'video/webm' });
+          status.textContent = 'Saving the video locally…';
+          try {
+            const response = await fetch('http://127.0.0.1:8765/recording', { method: 'POST', headers: { 'Content-Type': 'video/webm' }, body: blob });
+            if (!response.ok) throw new Error(`Upload status ${response.status}`);
+            const result = await response.json();
+            status.textContent = `Saved ${Math.round(result.bytes / 1024 / 1024 * 10) / 10} MB to the local judge walkthrough file.`;
+          } catch (error) { status.textContent = `Save failed: ${error.message}`; }
+          displayStream?.getTracks().forEach(track => track.stop());
+          stream.getTracks().forEach(track => track.stop());
+          document.querySelector('#start').disabled = false; document.querySelector('#stop').disabled = true;
+        };
+        recorder.start(1000);
+        document.querySelector('#start').disabled = true; document.querySelector('#stop').disabled = false;
+        status.textContent = 'Recording the MandateShield tab. Use the caption buttons, then Stop and save video.';
+      } catch (error) { status.textContent = `Could not start capture: ${error.message}`; }
+    });
+    document.querySelector('#stop').addEventListener('click', () => { if (recorder?.state === 'recording') recorder.stop(); });
+  </script>
+</body>
+</html>
